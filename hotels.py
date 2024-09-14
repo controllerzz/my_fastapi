@@ -5,18 +5,20 @@ router = APIRouter(prefix="/hotels", tags=["hotels"])
 
 
 hotels = [
-    {"id": 0, "city": "Sochi", "title": "Sochi1"},
-    {"id": 1, "city": "Sochi", "title": "Sochi2"},
-    {"id": 2, "city": "Dubai", "title": "Dubai1"},
-    {"id": 3, "city": "dubai", "title": "Dubai2"},
-    {"id": 4, "city": "Moscow", "title": "Moscow1"},
+    {"id": 1, "city": "Sochi", "title": "Sochi1"},
+    {"id": 2, "city": "Sochi", "title": "Sochi2"},
+    {"id": 3, "city": "Dubai", "title": "Dubai1"},
+    {"id": 4, "city": "dubai", "title": "Dubai2"},
+    {"id": 5, "city": "Moscow", "title": "Moscow1"},
 ]
 
 
 @router.get("")
 def get_hotels(
         id: int | None = Query(None, description="id"),
-        city: str | None = Query(None, description="Hotel City")
+        city: str | None = Query(None, description="Hotel City"),
+        page: int | None = Query(None, description="Page"),
+        per_page: int | None = Query(None, description="Per PAge"),
 ):
     hotels_result = []
     for hotel in hotels:
@@ -26,6 +28,12 @@ def get_hotels(
             continue
 
         hotels_result.append(hotel)
+
+    if page and per_page:
+        index_start = (page - 1) * per_page
+        index_end = (page - 1) * per_page + per_page
+        hotels_result = hotels_result[index_start:index_end]
+
     return hotels_result
 
 
