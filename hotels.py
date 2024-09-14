@@ -1,4 +1,6 @@
 from fastapi import Query, APIRouter
+
+from dependencies import PaginationDep
 from schemas.hotels import Hotel, HotelPATCH
 
 router = APIRouter(prefix="/hotels", tags=["hotels"])
@@ -12,13 +14,14 @@ hotels = [
     {"id": 5, "city": "Moscow", "title": "Moscow1"},
 ]
 
-
+page: int | None = Query(None, gt=0, description="Page"),
+per_page: int | None = Query(None, gt=0, lt=50, description="Per PAge"),
 @router.get("")
 def get_hotels(
+        pagination: PaginationDep,
         id: int | None = Query(None, description="id"),
         city: str | None = Query(None, description="Hotel City"),
-        page: int | None = Query(None, description="Page"),
-        per_page: int | None = Query(None, description="Per PAge"),
+
 ):
     hotels_result = []
     for hotel in hotels:
@@ -29,10 +32,9 @@ def get_hotels(
 
         hotels_result.append(hotel)
 
-    if page and per_page:
-        index_start = (page - 1) * per_page
-        index_end = (page - 1) * per_page + per_page
-        hotels_result = hotels_result[index_start:index_end]
+    if pagination.page is not None and pagination.per_page is not None:
+        index_start = (pagination.page - 1) * pagination.per_page
+        hotels_result = hotels_result[index_start:][:pagination.per_page]
 
     return hotels_result
 
