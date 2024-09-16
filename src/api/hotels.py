@@ -2,9 +2,8 @@ from fastapi import Query, APIRouter
 
 from src.api.dependencies import PaginationDep
 from src.database import session_maker
-from src.models.hotels import HotelsModel
 from src.repositories.hotels import HotelsRepository
-from src.schemas.hotels import Hotel, HotelPATCH
+from src.schemas.hotels import Hotel, HotelPATCH, HotelFilter
 
 from sqlalchemy import insert, select, func
 
@@ -29,10 +28,16 @@ async def get_hotels(
         )
 
 
+@router.get("/{hotel_id}")
+async def get_hotel(hotel_id:int):
+    async with session_maker() as session:
+        hotel = await HotelsRepository(session).get(id=hotel_id)
+        return {"status": "OK", "data": hotel}
+
 @router.post("/hotels")
 async def create_hotel(hotel_data: Hotel):
     async with session_maker() as session:
-        hotel = await HotelsRepository(session).add(add_data=hotel_data)
+        hotel = await HotelsRepository(session).add(data=hotel_data)
         await session.commit()
         return {"status": "OK", "data": hotel}
 
@@ -40,43 +45,32 @@ async def create_hotel(hotel_data: Hotel):
 
 
 @router.delete("/{hotel_id}")
-def delete_hotel(hotel_id: int):
-    global hotels
-    hotels =  [hotel for hotel in hotels if hotel["id"] != hotel_id]
-
+async def delete_hotel(hotel_id: int):
+    async with session_maker() as session:
+        await HotelsRepository(session).delete(id=hotel_id)
+        await session.commit()
     return {"status": "OK"}
 
 
 @router.put("/{hotel_id}")
-def put_hotel(
+async def put_hotel(
         hotel_id: int,
         hotel_data: Hotel
 ):
-    global hotels
-
-    for hotel in hotels:
-        if hotel["id"] == hotel_id:
-            hotel["city"] = hotel_data.city
-            hotel["title"] = hotel_data.title
-            return {"status": "OK"}
-
-    return {"status": "ERROR"}
+    async with session_maker() as session:
+        await HotelsRepository(session).edit(hotel_data, id=hotel_id)
+        await session.commit()
+    return {"status": "OK"}
 
 
 @router.patch("/{hotel_id}")
-def patch_hotel(
+async def patch_hotel(
         hotel_id: int,
         hotel_data: HotelPATCH
 ):
-    global hotels
-
-    for hotel in hotels:
-        if hotel["id"] == hotel_id:
-            if hotel_id.city is not None:
-                hotel["city"] = hotel_id.city
-            if hotel_id.title is not None:
-                hotel["title"] = hotel_id.title
-
-            return {"status": "OK"}
+    async with session_maker() as session:
+        await HotelsRepository(session).edit(hotel_data, exclude_unset=True, id=hotel_id)
+        await session.commit()
+        return {"status": "OK"}
 
     return {"status": "ERROR"}
