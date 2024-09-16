@@ -15,6 +15,4 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=r"X:\prj\python\fastapi\.env")
 
 
-
-
 settings = Settings()
