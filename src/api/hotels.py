@@ -1,61 +1,60 @@
 from fastapi import Query, APIRouter
 
 from src.api.dependencies import PaginationDep
+from src.database import session_maker
+from src.models.hotels import HotelsModel
 from src.schemas.hotels import Hotel, HotelPATCH
+
+from sqlalchemy import insert, select
 
 router = APIRouter(prefix="/hotels", tags=["hotels"])
 
 
-hotels = [
-    {"id": 1, "city": "Sochi", "title": "Sochi1"},
-    {"id": 2, "city": "Sochi", "title": "Sochi2"},
-    {"id": 3, "city": "Dubai", "title": "Dubai1"},
-    {"id": 4, "city": "dubai", "title": "Dubai2"},
-    {"id": 5, "city": "Moscow", "title": "Moscow1"},
-]
-
-page: int | None = Query(None, gt=0, description="Page"),
-per_page: int | None = Query(None, gt=0, lt=50, description="Per PAge"),
 @router.get("")
-def get_hotels(
+async def get_hotels(
         pagination: PaginationDep,
-        id: int | None = Query(None, description="id"),
-        city: str | None = Query(None, description="Hotel City"),
-
+        location: str | None = Query(None, description="Hotel Location"),
+        title: str | None = Query(None, description="Hotel Title"),
 ):
-    hotels_result = []
-    for hotel in hotels:
-        if id is not None and hotel["id"] != id:
-            continue
-        if city is not None and hotel["city"].lower() != city.lower():
-            continue
+    per_page = pagination.per_page or 10
+    async with session_maker() as session:
+        query = select(HotelsModel)
 
-        hotels_result.append(hotel)
+        if location:
+            query = query.filter(HotelsModel.location.contains(location))
 
-    if pagination.page is not None and pagination.per_page is not None:
-        index_start = (pagination.page - 1) * pagination.per_page
-        hotels_result = hotels_result[index_start:][:pagination.per_page]
+        if title:
+            query = query.filter(HotelsModel.title.contains(title))
 
-    return hotels_result
+        query = (
+            query
+            .offset(per_page * (pagination.page - 1))
+            .limit(per_page)
+        )
+        result = await session.execute(query)
+        hotels = result.scalars().all()
+        return hotels
+
+
+@router.post("/hotels")
+async def create_hotel(hotel_data: Hotel):
+    global hotels
+
+    async with session_maker() as session:
+        add_hotel_stmt = insert(HotelsModel).values(**hotel_data.model_dump())
+        print(add_hotel_stmt.compile(compile_kwargs={"literal_binds": True}))
+
+        await session.execute(add_hotel_stmt)
+        await session.commit()
+        return {"status": "OK"}
+
+    return {"status": "ERROR"}
 
 
 @router.delete("/{hotel_id}")
 def delete_hotel(hotel_id: int):
     global hotels
     hotels =  [hotel for hotel in hotels if hotel["id"] != hotel_id]
-
-    return {"status": "OK"}
-
-
-@router.post("/hotels")
-def create_hotel(hotel_data: Hotel):
-    global hotels
-
-    hotels.append({
-        "id": hotels[-1]["id"] + 1,
-        "city": hotel_data.city,
-        "title": hotel_data.title
-    })
 
     return {"status": "OK"}
 
