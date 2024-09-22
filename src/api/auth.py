@@ -6,7 +6,7 @@ from src.repositories.users import UsersRepository
 from src.schemas.users import UserRequestAdd, UserAdd
 
 from src.services.auth import AuthService
-router = APIRouter(prefix="/auth")
+router = APIRouter(prefix="/auth", tags=['auth'])
 
 
 @router.post("/register")
